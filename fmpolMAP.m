@@ -2,7 +2,7 @@ function [mu,sig2,fms,M,CGE] = fmpolMAP(C0,D0,alpha,T,kms,R,optvct)
 
 ss=size(C0); p=ss(1); sss=size(ss); 
 Tsteps=1; if sss(2)>2, Tsteps=ss(3); end; 
-ss=size(kms); ks=ss(2); kmax=max(kms); km=kmax+1; km3=max(3,km); 
+ss=size(kms); ks=ss(2), kmax=max(kms); km=kmax+1; km3=max(3,km); 
 F=zeros(p*km3,p*km3); M=zeros(p,p,km3); fms=zeros(1,km3); nn=zeros(1,R);
 
 H=eye(p*km3); jrepls=randsample(p,R,true,alpha); 
@@ -15,18 +15,18 @@ for Ts=1:Tsteps
     H=H*expm(F*T/Tsteps);
     for repl=1:R, 
         [n,jrepls(repl)]= MAPsim(p,C,D,jrepls(repl),T/Tsteps);
-        nn(1,repl)=nn(1,repl)+n; if mod(repl,10^4)==0, [Ts repl], end;
+        nn(1,repl)=nn(1,repl)+n; if mod(repl,10^2)==0, [Ts repl], end;
     end;
 end;
 
-
+musim=mean(nn(1,:) ), sig2sim=var(nn(1,:))
 for k=1:km3
     Mk=H(1:p,(k-1)*p+1:k*p); M(:,:,k)=Mk;
     fms(k)=alpha*Mk*ones(p,1)*factorial(k-1);
 end; 
 
 mu=fms(2); sig2=fms(3)+fms(2)-fms(2)^2; 
-fms=fms(1:km); muref=mu; sig2ref=sig2; figno=1;
+fms=fms(1:km); muref=mu, sig2ref=sig2, figno=1;
 xmax=ceil(1.2*(muref+2.58*sig2ref^(1/2))); poisson=mu>sig2;
 
 if nargin>6
@@ -53,7 +53,7 @@ end; end;
 
 if poisson, [A,c]=orthopolPC(muref,kmax,fms);
     frefx=exp(-muref)*muref.^xs./factorial(xs); 
-else [r,rho,A,c]=orthopolNB(muref,sig2ref,kmax,fms); 
+else [r,rho,A,c]=orthopolNB(muref,sig2ref,kmax,fms); %r, rho, NBmean=r*rho/(1-rho)
     frefx=(1-rho)^r*gamma(xs+r)/gamma(r)./factorial(xs).*rho.^xs;
 end;
 
@@ -70,20 +70,22 @@ ymax=1.2*max(max(frefx),max(fsimx));
 if nargin>6, if sopt>2 & optvct(3)>0, ymax=optvct(3); end; end;
 ymin=-0.15*ymax; 
 plot(xs,0*xs,'g','LineWidth',2);
-axis([0 xmax ymin ymax]);
-xleg=0.68*xmax:0.5:0.75*xmax; ysimleg=0*xleg+0.94*ymax; 
+xleg=0.68*xmax:0.01:0.75*xmax; ysimleg=0*xleg+0.94*ymax; 
 
 xsimleg=[0.69*xmax,0.73*xmax]; ysimleg=0*xsimleg+0.94*ymax;
-plot(xsimleg,ysimleg,'*r','LineWidth',4);
-if R>0, text(0.77*xmax,0.94*ymax,'Simulated','FontSize',18); end;
+if R>0
+    plot(xsimleg,ysimleg,'*r','LineWidth',4);
+    text(0.77*xmax,0.94*ymax,'Simulated','FontSize',18); 
+end
 plot(xleg,0*xleg+0.88*ymax,'--b','LineWidth',1);
 text(0.77*xmax,0.88*ymax,'Reference','FontSize',18);
-for ik=1:ks
+for ik=1:ks, ik
     plot(xleg,0*xleg+(0.88-0.06*ik)*ymax,st{ik},'LineWidth',2);
     text(0.77*xmax,(0.88-0.06*ik)*ymax,'N = ','FontSize',18);
     text(0.85*xmax,(0.88-0.06*ik)*ymax,num2str(kms(ik)),'FontSize',18);
 end;
-if xmax<25, xticks(0:5:35); else xticks('auto'); end;
+if xmax<11, xticks(0:1:10); elseif xmax<25, xticks(0:5:35); else xticks('auto'); end;
+axis([0 xmax ymin ymax]);
 %xticklabels({'x=0','x=5','x=10'});
 
 
@@ -106,7 +108,8 @@ end %ortopolPC
 function [r,rho,A,c] = orthopolNB(mu,sig2,kmax,fms)
 km=kmax+1; c=0*(1:km); c(1)=1;
 A=zeros(km,km); A(1,1)=1;
-rho=1-mu/sig2; r=T*(1-rho)/rho;
+rho=1-mu/sig2; r=mu*(1-rho)/rho;%T*(1-rho)/rho;
+sig2NB=r*rho/(1-rho)^2; sig2NB
 A=zeros(km,km);  A(1,1)=1; 
 raf=0*(1:km); raf(1)=1; raf(2)=r; % rising factorial
 for k=3:km, raf(k)=raf(k-1)*(r+k-2); end;
